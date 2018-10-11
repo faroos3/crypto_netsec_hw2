@@ -8,6 +8,10 @@ import random
 import time
 import socket 
 import sys 
+import toy_des
+
+# remember you can do "{:08b}".format(any number) to convert that number to a string rep of its binary digits 
+# "{:010b}".format(any number) for 10 bits
 
 # information in the public space is global
 ID_A = '1110010101' # this is going to be ID_A used in N-S
@@ -16,6 +20,10 @@ g = 331
 n = 1021
 
 # Define all the crypto stuff needed up here first 
+
+def generate_a():
+	a = "" # a should probably be an int
+	return a
 
 
 ##############################################################################

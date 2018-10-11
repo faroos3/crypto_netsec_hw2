@@ -8,8 +8,12 @@ import random
 import time
 import socket 
 import sys
+import toy_des
 
 # define all the crypto stuff you have to do here first 
+
+# remember you can do "{:08b}".format(any number) to convert that number to a string rep of its binary digits 
+# "{:010b}".format(any number) for 10 bits
 
 # information in the public space is global
 ID_A = '1110010101' # this is going to be ID_A used in N-S
