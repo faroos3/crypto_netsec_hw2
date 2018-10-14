@@ -332,28 +332,7 @@ if __name__ == "__main__":
 			block += secret_bin[j]
 		block_list.append(block)
 		block = ""
-		
 
-	# print(block_list)
-
-	# ignore the code below. It was just me trying to make sure my key
-	# generation worked
-	'''
-	IP_key = key_IP(key)
-	print("after IP: ", key_IP(key)) 
-	first_split, second_split = key_splitter(IP_key)
-	print("after key_splitter: ", first_split, "second split:", second_split)
-	new_num_test = int(first_split, 2) << 1
-	print(new_num_test)
-	left_shifted = left_shifter(first_split)
-	print(left_shifted)
-	another_ls = left_shifter(second_split)
-	print(another_ls)
-	Key1 = P8_Permuter(left_shifted, another_ls)
-	again_ls = left_shifter(left_shifted)
-	again_ls2 = left_shifter(another_ls)
-	Key2 = P8_Permuter(again_ls, again_ls2)
-	'''
 	realK1, realK2 = key_getter(key)
 	# print("my K1: ", Key1)
 	print("K1: ", realK1)
@@ -364,28 +343,6 @@ if __name__ == "__main__":
 	''' 
 	This was me just trying to made sure the program worked. 
 	'''
-	# # trying on one block for now 
-	# test_block = block_list[0]
-	# print("test block is: ", test_block)
-	# first_cp = plain_text_IP(test_block)
-	# print("first IP: ", first_cp)
-	# cp_4bit1, cp_4bit2 = split_pt(first_cp)
-	# print("the first split is: ", cp_4bit1)
-	# print("the second half is: ", cp_4bit2)
-	# print("XOR'ing the two results in: ", xor_4_bit_strings(cp_4bit1, cp_4bit2))
-	# print("sbox0 of 0111 is:", sbox0('1100'))
-
-	# testing out the first cipher and making sure it works.
-	# first_cipher = encryptor(test_block, realK1, realK2)
-	# print("the direct result of first_cipher: ", first_cipher)
-	# print(list(first_cipher))
-	# print("the encoded string: ", text_from_bits(first_cipher))
-
-	# first_decrypt = decryptor(first_cipher, realK1, realK2)
-
-	# print("the direct result of first_decrypt: ", first_decrypt)
-
-	# print("the direct result of turning the decrypt to text: ", text_from_bits(first_decrypt))
 
 	# encrypting and decrypting everything!!! 
 	encrypt_list = [] 
