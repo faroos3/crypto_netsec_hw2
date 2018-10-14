@@ -118,7 +118,8 @@ def client_connect():
     recv_from_KDC = soc.recv(max_buffer_size).decode("utf8") # this should be g^b mod n 
     Kb = ((int(recv_from_KDC))**a) % n
     Kb_bits = "{:010b}".format(Kb)
-    print("The shared key with the KDC is:", Kb, "which as 10 bits is: {:010b}".format(Kb))
+    print("Diffie-Hellman has finished, and you have a shared key with the KDC!")
+    # print("The shared key with the KDC is:", Kb, "which as 10 bits is: {:010b}".format(Kb))
     soc.close()
     # D-H done 
 
@@ -135,10 +136,10 @@ def client_connect():
     print("Type in 'list' to see who has spoken with the KDC.")
     print("Type in 'wait' to wait on a client Alice to initiate a Needham-Schroder talk with you.")
     # print("Type in 'talk to <ID>', where <ID> is the 10-bit ID of someone else who has spoken with the KDC to initiate N-S with them.") 
-    print("Please note: For the sake of this proof of concept, the other client should be listeining for a connection when it connects. You, as Alice, will be disconnecting from the KDC and then connecting to them.")
+    print("Please note: For the sake of this proof of concept, the other client will be trying to connect. You, as Bob, will be disconnecting from the KDC and oepning your own socket.")
     print("Type in 'quit' to close the program.")
     while True:
-    	message = input("--> ")
+    	message = input("Enter an option --> ")
     	# list 
     	if(message == 'list'):
     		soc.send(message.encode("utf8"))
@@ -154,14 +155,66 @@ def client_connect():
     		soc = socket.socket()
     		soc.bind((my_host, my_port))
     		print("I am waiting for a connection from Alice now...")
-    		b_soc.listen(1)
+    		soc.listen(1)
     		# At this point, we've connected! Get their information 
-    		connection, address = b_soc.accept()
+    		connection, address = soc.accept()
     		print("Got a connection from:", str(address))
     		# now recieve the thing to verify 
-    		to_decrypt = b_soc.recv(max_buffer_size).decode("utf8")
-    		print("Recieved from Alice:", to_decrypt)
-
+    		to_decrypt = connection.recv(max_buffer_size).decode("utf8")
+    		# print("Recieved from Alice:", to_decrypt)
+    		# Now decrypt this with my key to get the Ks 
+    		decrypted_from_A = decryptor(to_decrypt, Kb_bits)
+    		# print("The decrypted message is:", decrypted_from_A)
+    		Ks = decrypted_from_A[0:10]
+    		# if anything is ever wrong, close the connection. 
+    		ID_a_to_check = decrypted_from_A[10:20]
+    		# print("ID_a_to_check == ID_A?", ID_a_to_check == ID_A)
+    		a_nonce = decrypted_from_A[20::]
+    		# print("The nonce from A is:", a_nonce)
+    		# END STEP 3 
+    		# STEP 4
+    		# Now that we have the Ks, let's generate a nonce, encrypt it, and sent it to A. We're expecting 
+    		# that nonce back - 1.
+    		nonce_2 = generate_nonce()
+    		expected_nonce = nonce_2 - 1
+    		nonce_2_bits = "{:010b}".format(nonce_2)
+    		nonce_to_send = encryptor(nonce_2_bits, Ks) # Ks should already be bits 
+    		# now send the nonce to A
+    		# print("nonce_to_send is:", nonce_to_send)
+    		connection.send(nonce_to_send.encode("utf8"))
+    		# END STEP 4 
+    		# START STEP 5 
+    		nonce_2_frm_A = connection.recv(max_buffer_size).decode("utf8")
+    		nonce_2_frm_A = decryptor(nonce_2_frm_A, Ks)
+    		if(expected_nonce != int(nonce_2_frm_A, 2)):
+    			print("The expected nonce was wrong! Closing everything.")
+    			connection.send("Something went wrong. Disconnecting.".encode("utf8"))
+    			soc.close()
+    			sys.exit()
+    		else:
+    			print("It worked! Establishing connection to communicate securely with A...")
+    			connection.send("Okay to connect!".encode("utf8"))
+    		# END STEP 5 
+    			print("Alice will send a message, and then you can send a response. Enjoy chatting!")
+    			while message != "QUIT":
+    				if(message == "QUIT"):
+    					#end_msg = "Bob is ending the connection. Goodbye!"
+    					#print("Ending the chatroom...goodbye!")
+    				 	encrypted_end = encryptor(end_msg, Ks)
+    				 	connection.send(encrypted_end.encode("utf8"))
+    				 	soc.close()
+    				 	sys.exit()
+    				response = connection.recv(max_buffer_size).decode("utf8")
+    				decrypted_msg = decryptor(response, Ks)
+    				print("Alice says (decrypted):", decrypted_msg)
+    				message = input("Message to send to Alice --> ")
+    				encrypted_msg = encryptor(message, Ks)
+    				if(decrypted_msg == "QUIT"):
+    						print("Ending the chat...goodbye!")
+    						soc.close()
+    						sys.exit()
+    				print("\nThe message you are sending, when encrpted, is:", encrypted_msg, "\n")
+    				connection.send(encrypted_msg.encode("utf8"))
 
     	elif(message == "quit"):
     		soc.send(message.encode("utf8"))
@@ -169,15 +222,6 @@ def client_connect():
     		soc.close()
     		sys.exit()
     	continue
-
-    # while message != 'quit':
-    #     soc.sendall(message.encode("utf8"))
-    #     if soc.recv(5120).decode("utf8") == "-":
-    #         pass        # null operation
-
-    #     message = input(" -> ")
-
-    # soc.send(b'--quit--')
 
 if __name__ == "__main__":
 

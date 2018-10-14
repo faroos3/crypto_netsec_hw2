@@ -107,7 +107,6 @@ def decryptor(entire_msg, key):
 	block = ""
 	for i in range(0, len(encrypt_bits), 8):
 		for j in range(i, i+8):
-			# print(j)
 			block += encrypt_bits[j]
 		decrypt_list.append(block)
 		block = ""
@@ -147,7 +146,7 @@ def start_server():
     ######################### Input my crypto stuff 
 
     Ks = generate_session_key()
-    print("The session key is going to be", Ks)
+    # print("The session key is going to be", Ks)
 
     ##########################
 
@@ -170,12 +169,12 @@ def start_server():
 def client_thread(connection, ip, port, Ks, max_buffer_size = 5120): 
 	# this should be different if it's their first time connecting
 	# versus their second time connecting. 
-	print("\nNEW Connection!\n")
+	print("New connection!\n")
 	is_active = True 
 	intitial_message = connection.recv(max_buffer_size)
 	intitial_message_len = sys.getsizeof(intitial_message)
 	decoded_initial_msg = intitial_message.decode("utf8").rstrip()
-	print("The initial message, which should be the client's ID, is:", decoded_initial_msg) # ADDING THE STRING B/C IT SENDS SOME RANDOM 4 NUMS FOR SOME REASON
+	# print("The initial message, which should be the client's ID, is:", decoded_initial_msg) # ADDING THE STRING B/C IT SENDS SOME RANDOM 4 NUMS FOR SOME REASON
 
 	cli_ID = decoded_initial_msg[0:10]
 
@@ -189,7 +188,7 @@ def client_thread(connection, ip, port, Ks, max_buffer_size = 5120):
 	else:
 		id_list[cli_ID] = 1
 		print("The client with ID", cli_ID, "has connected", id_list[cli_ID], "time.")
-	print("\nThe id_list is currently:", id_list, "\n")
+	# print("\nThe id_list is currently:", id_list, "\n")
 
 	# if someone connected for the first time, need to do Diffie-Hellman to get a shraed key 
 	if id_list[cli_ID] == 1:
@@ -202,16 +201,16 @@ def client_thread(connection, ip, port, Ks, max_buffer_size = 5120):
 		# print("I RECEIVED THIS FROM THE CLIENT: ", recv_from_a)
 		# print("I got", recv_from_a, "which has type:", type(recv_from_a))
 		K_with_cli = ((int (recv_from_a))**b) % n
-		print("The shared key with the client", cli_ID, "is:", K_with_cli, "which as 10 bits is: {:010b}".format(K_with_cli))
+		# print("The shared key with the client", cli_ID, "is:", K_with_cli, "which as 10 bits is: {:010b}".format(K_with_cli))
 		shared_key_list[cli_ID] = (K_with_cli, "{:010b}".format(K_with_cli))
-		print("Client", cli_ID, "has shared key:", shared_key_list[cli_ID])
+		# print("Client", cli_ID, "has shared key:", shared_key_list[cli_ID])
 		print("Closing the connection with", cli_ID, "as they have performed Diffie-Hellman.")
 		connection.close()
 	else:
 		# The client is now going to ask the KDC for requests. 3 are supported - list, talk to, and quit. 
 		is_needy = True # this is a flag to see if the client needs anything from the server
 		while is_needy:
-			print("I am now waiting for options from client", cli_ID)
+			print("I am now waiting for options from client", cli_ID + "...")
 			command = (connection.recv(max_buffer_size)).decode("utf8")
 			print("I received the command", command, "from client", cli_ID)
 			# the list command 
@@ -235,12 +234,12 @@ def client_thread(connection, ip, port, Ks, max_buffer_size = 5120):
 				else: # GOOD CASE: continue with step 1 
 					# STEP 1 
 					connection.send("We're good to go! Please send your first envelope of information.".encode("utf8"))
-					print("Now waiting on ID_a || ID_b || N_1 from the client.")
+					# print("Now waiting on ID_a || ID_b || N_1 from the client.")
 					first_envelope = (connection.recv(max_buffer_size)).decode("utf8")
-					print("Client ID", cli_ID, "sent the envelope:", first_envelope)
+					# print("Client ID", cli_ID, "sent the envelope:", first_envelope)
 					# really only needed for the nonce 
 					nonce = first_envelope[20:30] # as a 10bit string 
-					print("nonce received is:", nonce)
+					# print("nonce received is:", nonce)
 					# END STEP 1 
 
 					# Start STEP 2 
@@ -264,43 +263,6 @@ def client_thread(connection, ip, port, Ks, max_buffer_size = 5120):
 				print("Something went terribly wrong. Try again!")
 
 		connection.close()
-
-	# connection.close()
-	# print("Connection " + ip + ":" + port + " closed")
-'''
-def client_thread(connection, ip, port, max_buffer_size = 5120):
-    is_active = True
-
-    while is_active:
-        client_input = receive_input(connection, max_buffer_size, ip, port)
-
-        if "--QUIT--" in client_input:
-            print("Client is requesting to quit")
-            connection.close()
-            print("Connection " + ip + ":" + port + " closed")
-            is_active = False
-        else:
-            print("Processed result: {}".format(client_input))
-            connection.sendall("-".encode("utf8"))
-
-
-def receive_input(connection, max_buffer_size, ip, port):
-    client_input = connection.recv(max_buffer_size)
-    client_input_size = sys.getsizeof(client_input)
-
-    if client_input_size > max_buffer_size:
-        print("The input size is greater than expected {}".format(client_input_size))
-
-    decoded_input = client_input.decode("utf8").rstrip()  # decode and strip end of line
-    result = decoded_input
-    print("I received:", result, "from", ip, port)
-
-    return result
-'''
-# def process_input(input_str):
-# 	print("Getting the ID from the client")
-# 	return "Hello " + str(input_str).upper()
-
 
 if __name__ == "__main__":
 	# this needs to listen to TCP connection 

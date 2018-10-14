@@ -68,7 +68,6 @@ def decryptor(entire_msg, key):
 	block = ""
 	for i in range(0, len(encrypt_bits), 8):
 		for j in range(i, i+8):
-			# print(j)
 			block += encrypt_bits[j]
 		decrypt_list.append(block)
 		block = ""
@@ -98,7 +97,6 @@ def client_connect():
         print("Connection error 1")
         sys.exit()
 
-    print("Enter 'quit' to exit")
     message = ID_A # that way, the first thing it sends is the ID
     soc.send(message.encode("utf8"))
 
@@ -115,7 +113,8 @@ def client_connect():
     recv_from_KDC = soc.recv(max_buffer_size).decode("utf8") # this should be g^b mod n 
     Ka = ((int(recv_from_KDC))**a) % n
     Ka_bits = "{:010b}".format(Ka)
-    print("The shared key with the KDC is:", Ka, "which as 10 bits is: {:010b} \n".format(Ka))
+    # print("The shared key with the KDC is:", Ka, "which as 10 bits is: {:010b} \n".format(Ka))
+    print("Diffie-Hellman has finished, and you have a shared key with the KDC!")
     soc.close()
     # Diffie-Hellman done
 
@@ -140,7 +139,7 @@ def client_connect():
     print("Please note: For the sake of this proof of concept, the other client should be listeining for a connection when it connects. You, as Alice, will be disconnecting from the KDC and then connecting to them.")
     print("Type in 'quit' to close the program.")
     while True:
-    	message = input("--> ")
+    	message = input("Enter an option --> ")
     	# list 
     	if(message == 'list'):
     		soc.send(message.encode("utf8"))
@@ -151,46 +150,49 @@ def client_connect():
     		client_desired = input("Please enter the 10-bit public of a client you want to talk with --> ")
     		soc.send(client_desired.encode("utf8"))
     		response = soc.recv(max_buffer_size).decode("utf8")
-    		print(response, "was recieved from client.")
+    		# print(response, "was recieved from client.")
     		if("ERROR" in response):
     			print("Oh no! I sent an ID that didn't work.")
     			continue
     		else: # GOOD CASE
-    			print("Going to send the first the first envelope to the KDC.")
+    			# print("Going to send the first the first envelope to the KDC.")
     			# STEP 1 
     			nonce_1 = generate_nonce()
     			nonce_1_bits = "{:010b}".format(nonce_1)
-    			print("The nonce generated is", nonce_1, "which as 10 bits is", nonce_1_bits)
+    			# print("The nonce generated is", nonce_1, "which as 10 bits is", nonce_1_bits)
     			first_envolope = ID_A + ID_B + nonce_1_bits
-    			print("About to send the first_envolope", first_envolope)
+    			# print("About to send the first_envolope", first_envolope)
     			soc.send(first_envolope.encode("utf8"))
     			# END STEP 1
     			# START STEP 2 
     			# this should be receiveing an envelope from the KDC 
     			second_envolope = soc.recv(max_buffer_size).decode("utf8")
-    			print("Recieved this from the KDC:", second_envolope)
+    			# print("Recieved this from the KDC:", second_envolope)
     			# END STEP 2 
     			# START STEP 3
     			# first, decrypt the thing I just got 
     			decrypted_second_env = decryptor(second_envolope, Ka_bits)
-    			print("I decrypted the received envelope with my key and got:", decrypted_second_env)
+    			# print("I decrypted the received envelope with my key and got:", decrypted_second_env)
     			# the first ten bits should be the session key, the second 10 bits should be B's ID, the third as the nonce. Anything after 
     			# has to be sent to B 
     			Ks = decrypted_second_env[0:10]
-    			print("Ks got is:", Ks)
+    			# print("Ks got is:", Ks)
     			check_ID_B = decrypted_second_env[10:20]
-    			print("ID_B == check_ID_B?", check_ID_B == ID_B)
+    			# print("ID_B == check_ID_B?", check_ID_B == ID_B)
     			nonce = decrypted_second_env[20:30]
-    			print(nonce, "was the nonce received.")
+    			if(nonce != nonce_1_bits):
+    				print("Something went wrong! Please try again later.")
+    				soc.close()
+    				sys.exit()
     			send_to_B = decrypted_second_env[30::]
-    			print("need to send this to b:", send_to_B)
+    			# print("need to send this to b:", send_to_B)
 
     			# now need to close the connection to the KDC and connect to B's socket 
     			print("Closing the connection to the KDC as it is no longer needed!")
     			soc.send("quit".encode("utf8")) # so the KDC doesn't kill itself in in infy loop
     			soc.close()
     			# Now to connect to B's socket!
-    			soc = socket.socket()
+    			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     			try:
     				soc.connect((my_host, my_port))
     			except:
@@ -198,9 +200,45 @@ def client_connect():
     				continue
     			# now send the thing to send to B 
     			soc.send(send_to_B.encode("utf8"))
-
-
     			# END STEP 3 
+    			# START STEP 4 
+    			# this thing just wants a nonce - 1 sent to it - send it 
+    			n2_to_decrypt = soc.recv(max_buffer_size).decode("utf8")
+    			# print("n2_to_decrypt is:", n2_to_decrypt)
+    			# END STEP 4
+    			# START STEP 5
+    			n2_bits = decryptor(n2_to_decrypt, Ks)
+    			# just doing the function and encrypthing the result 
+    			expected_n2 = int(n2_bits, 2) - 1
+    			encrypted_n2 = encryptor("{:010b}".format(expected_n2), Ks)
+    			soc.send(encrypted_n2.encode("utf8"))
+    			# END STEP 5
+
+    			status = soc.recv(max_buffer_size).decode("utf8")
+    			if status == "Okay to connect!":
+    				# IT WORKED! Let's chat! 
+    				print("Connection established! Type 'QUIT' to quit...")
+    				while message != "QUIT":
+    					# if(message == "QUIT"):
+    					# 	end_msg = "Alice is ending the connection. Goodbye!"
+    					# 	print("Ending the chatroom...goodbye!")
+    					# 	encrypted_end = encryptor(end_msg, Ks)
+    					# 	soc.send(encrypted_end.encode("utf8"))
+    					# 	soc.close()
+    					# 	sys.exit()
+    					message = input("Message to send to Bob -->")
+    					encrypted_msg = encryptor(message, Ks)
+    					# sending the message now that Ks works b/t the two of them
+    					print("\nThe message you are sending, when encrpted, is:", encrypted_msg, "\n")
+    					soc.send(encrypted_msg.encode("utf8"))
+    					response = soc.recv(max_buffer_size).decode("utf8")
+    					decrypted_msg = decryptor(response, Ks)
+    					if(decrypted_msg == "QUIT"):
+    						print("Ending the chat...goodbye!")
+    						soc.close()
+    						sys.exit()
+    					print("Bob says (decrypted):", decrypted_msg)
+
     	elif(message == "quit"):
     		soc.send(message.encode("utf8"))
     		print("Closing the client. Thanks!")
